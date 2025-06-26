@@ -1,16 +1,17 @@
 import os
+import uuid
 import gdown
 import tempfile
-import shutil
+import threading
+import time
 import numpy as np
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, url_for
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import image_dataset_from_directory
-from PIL import Image
 
 app = Flask(__name__)
 
-# Twi class names
+# Twi translations
 twi_translations = {
     'Accidents and disaster': 'Asiane ne Amanehunu',
     'Agriculture': 'Kuadwuma',
@@ -66,9 +67,8 @@ twi_translations = {
 class_names = list(twi_translations.keys())
 
 MODEL_PATH = "fine_tuned_model_3.0.keras"
-FILE_ID = "1Zt6Fg4PeQx9WPIXXWzwQTP4FhczpZ3L9"
+FILE_ID = "1gdfeYaa8X66J4IG9t830DKUK5LcIqfJO"
 
-# 🔽 Download the model if not present
 def download_model():
     if not os.path.exists(MODEL_PATH):
         gdown.download(f"https://drive.google.com/uc?id={FILE_ID}", MODEL_PATH, quiet=False)
@@ -76,7 +76,18 @@ def download_model():
 download_model()
 model = load_model(MODEL_PATH)
 
-# 🧠 Match the working Colab logic with temp image directory
+# Auto-delete function
+def delete_later(path, delay=300):
+    def delete():
+        time.sleep(delay)
+        try:
+            os.remove(path)
+            print(f"Deleted: {path}")
+        except FileNotFoundError:
+            pass
+    threading.Thread(target=delete).start()
+
+# Image preprocessing
 def process_uploaded_image(uploaded_file, img_size=(224, 224)):
     with tempfile.TemporaryDirectory() as tmpdir:
         class_dir = os.path.join(tmpdir, "class0")
@@ -103,18 +114,42 @@ def index():
             return render_template("index.html", predictions=None, warning="Please upload an image.")
 
         image_file = request.files["image"]
+        image_file.seek(0)
         img_tensor = process_uploaded_image(image_file)
 
         preds = model.predict(img_tensor)[0]
         top_indices = preds.argsort()[::-1][:3]
-        top_preds = [(class_names[i], twi_translations.get(class_names[i], "❓"), float(preds[i])) for i in top_indices]
 
-        if top_preds[0][2] >= 0.5:
-            return render_template("index.html", predictions=top_preds, warning=None)
-        else:
+        top_preds = []
+        for i in top_indices:
+            eng_label = class_names[i]
+            twi_label = twi_translations.get(eng_label, "❓")
+            confidence = float(preds[i])
+            top_preds.append({
+                "english": eng_label,
+                "twi": twi_label,
+                "confidence": confidence
+            })
+
+        if top_preds[0]["confidence"] < 0.5:
             return render_template("index.html", predictions=[], warning="Gyidie no nsɔ 50%, enti yɛrentumi nka")
+
+        # Save image for preview
+        filename = f"{uuid.uuid4().hex}_{image_file.filename}"
+        static_path = os.path.join("static", filename)
+        image_file.seek(0)
+        with open(static_path, "wb") as f:
+            f.write(image_file.read())
+
+        # Schedule deletion
+        delete_later(static_path, delay=300)  # Delete after 5 minutes
+
+        image_url = url_for('static', filename=filename)
+        return render_template("index.html", predictions=top_preds, warning=None, image_url=image_url)
 
     return render_template("index.html", predictions=None, warning=None)
 
 if __name__ == "__main__":
+    if not os.path.exists("static"):
+        os.makedirs("static")
     app.run(debug=True)
