@@ -3,34 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <title>Twi Image Classifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-color: #f9fbfc;
+      --container-bg: #ffffff;
+      --text-color: #2c3e50;
+      --label-color: #222;
+      --button-bg: #2ecc71;
+      --button-hover: #27ae60;
+      --toggle-bg: #3498db;
+      --toggle-hover: #2980b9;
+      --confidence-fill: #2ecc71;
+    }
+
+    body.dark-mode {
+      --bg-color: #121212;
+      --container-bg: #1e1e1e;
+      --text-color: #ffffff;
+      --label-color: #f2f2f2;
+      --button-bg: #27ae60;
+      --button-hover: #1abc9c;
+      --toggle-bg: #2980b9;
+      --toggle-hover: #1c638c;
+      --confidence-fill: #1abc9c;
+    }
+
     * {
       box-sizing: border-box;
     }
 
     body {
       font-family: 'Inter', sans-serif;
-      background-color: #f0f4f8;
+      background-color: var(--bg-color);
+      color: var(--text-color);
       margin: 0;
-      padding: 40px 20px;
-      display: flex;
-      justify-content: center;
+      padding: 0;
     }
 
     .container {
-      background-color: #ffffff;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-      width: 100%;
-      max-width: 600px;
+      background-color: var(--container-bg);
+      padding: 30px 24px;
+      margin: 40px auto;
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      width: 90%;
+      max-width: 550px;
+      position: relative;
+    }
+
+    .dark-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-color);
     }
 
     h1 {
       text-align: center;
-      color: #2c3e50;
-      margin-bottom: 30px;
+      font-size: 26px;
+      margin-bottom: 25px;
     }
 
     form {
@@ -38,31 +75,83 @@
       margin-bottom: 30px;
     }
 
-    input[type="file"] {
+    .custom-file-upload {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #34495e;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
       margin-bottom: 15px;
-      font-size: 16px;
+      text-align: center;
+    }
+
+    .custom-file-upload:hover {
+      background-color: #2c3e50;
+    }
+
+    input[type="file"] {
+      display: none;
     }
 
     input[type="submit"] {
-      background-color: #2ecc71;
+      background-color: var(--button-bg);
       color: white;
       border: none;
-      padding: 10px 24px;
+      padding: 12px 28px;
       font-size: 16px;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 300px;
       transition: background 0.2s ease;
     }
 
     input[type="submit"]:hover {
-      background-color: #27ae60;
+      background-color: var(--button-hover);
+    }
+
+    .warning {
+      color: #e74c3c;
+      background-color: #fdecea;
+      padding: 15px;
+      border-left: 5px solid #e74c3c;
+      border-radius: 6px;
+      margin-top: 20px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    #image-preview-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    img.preview {
+      max-width: 100%;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto;
     }
 
     .predictions {
       background-color: #ecf0f1;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-top: 20px;
+      color: #222;
+    }
+
+    .dark-mode .predictions {
+      background-color: #2e2e2e;
+      color: var(--label-color);
+    }
+
+    .predictions h3 {
+      font-size: 20px;
+      margin-bottom: 15px;
+      text-align: center;
     }
 
     .predictions ul {
@@ -73,39 +162,91 @@
 
     .predictions li {
       font-size: 17px;
-      margin-bottom: 12px;
-      padding: 10px;
-      background-color: #fff;
-      border-left: 4px solid #2ecc71;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-      border-radius: 5px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background-color: #ffffff;
+      border-left: 4px solid var(--confidence-fill);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+      border-radius: 6px;
+      text-transform: capitalize;
+      color: var(--label-color);
     }
 
-    .warning {
-      color: #e74c3c;
-      background-color: #fdecea;
-      padding: 15px;
-      border-left: 5px solid #e74c3c;
+    .dark-mode .predictions li {
+      background-color: #1e1e1e;
+    }
+
+    .label {
+      font-weight: 600;
+    }
+
+    em {
+      font-size: 14.5px;
+      color: #555;
+      font-style: italic;
+    }
+
+    .confidence-bar {
+      width: 100%;
+      background-color: #ecf0f1;
+      border-radius: 6px;
+      height: 10px;
+      margin-top: 6px;
+    }
+
+    .confidence-bar .fill {
+      height: 100%;
+      border-radius: 6px;
+      background-color: var(--confidence-fill);
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 15px;
+    }
+
+    #toggleLang {
+      padding: 10px 20px;
+      font-size: 15px;
       border-radius: 5px;
-      margin-top: 20px;
-      text-align: center;
+      border: none;
+      background-color: var(--toggle-bg);
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    #toggleLang:hover {
+      background-color: var(--toggle-hover);
     }
 
     @media (max-width: 480px) {
-      .container {
-        padding: 20px;
-      }
+      h1 { font-size: 22px; }
+      input[type="submit"],
+      .custom-file-upload,
+      #toggleLang { font-size: 15px; padding: 10px; }
+      .predictions li { font-size: 16px; }
+      .warning { font-size: 15px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <button class="dark-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
     <h1>Twi Image Classifier</h1>
 
     <form action="/" method="post" enctype="multipart/form-data">
-      <input type="file" name="image" accept="image/*" required><br>
+      <label for="file-upload" class="custom-file-upload">📁 Choose Image</label>
+      <input id="file-upload" type="file" name="image" accept="image/*" required><br>
       <input type="submit" value="Predict">
     </form>
+
+    <div id="image-preview-container">
+      {% if image_url %}
+        <img src="{{ image_url }}" alt="Uploaded Image" class="preview">
+      {% endif %}
+    </div>
 
     {% if warning %}
       <div class="warning">{{ warning }}</div>
@@ -113,17 +254,63 @@
 
     {% if predictions %}
       <div class="predictions">
-        <h3>Top Predictions</h3>
+        <h3 id="section-title">Ntotoho a ɛda anim</h3>
         <ul>
-          {% for label, twi_label, confidence in predictions %}
+          {% for pred in predictions %}
             <li>
-              {{ loop.index }}. <strong>{{ label }}</strong> ({{ twi_label }}) — 
-              <em>{{ (confidence * 100) | round(2) }}%</em>
+              {{ loop.index }}.
+              <span class="label twi">{{ pred.twi }}</span>
+              <span class="label english" style="display:none;">{{ pred.english }}</span>
+              — <em>{{ (pred.confidence * 100) | round(2) }}%</em>
+              <div class="confidence-bar">
+                <div class="fill" style="width: {{ (pred.confidence * 100) | round(2) }}%;"></div>
+              </div>
             </li>
           {% endfor %}
         </ul>
+        <div class="button-row">
+          <button id="toggleLang" onclick="toggleLanguage()">Show English</button>
+        </div>
       </div>
     {% endif %}
   </div>
+
+  <script>
+    function toggleLanguage() {
+      const twiLabels = document.querySelectorAll('.label.twi');
+      const engLabels = document.querySelectorAll('.label.english');
+      const toggleBtn = document.getElementById('toggleLang');
+      const heading = document.getElementById('section-title');
+
+      const showingEnglish = engLabels[0].style.display === 'inline';
+
+      twiLabels.forEach(el => el.style.display = showingEnglish ? 'inline' : 'none');
+      engLabels.forEach(el => el.style.display = showingEnglish ? 'none' : 'inline');
+
+      toggleBtn.textContent = showingEnglish ? 'Show English' : 'Show Twi';
+      heading.textContent = showingEnglish ? 'Ntotoho a ɛda anim' : 'Top Predictions';
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    // 👇 Live preview of uploaded image before submit
+    document.getElementById("file-upload").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      const previewContainer = document.getElementById("image-preview-container");
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewContainer.innerHTML = `
+            <p style="text-align:center; font-weight:500;">Selected Image:</p>
+            <img src="${e.target.result}" class="preview" alt="Live Preview">
+          `;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  </script>
 </body>
 </html>
